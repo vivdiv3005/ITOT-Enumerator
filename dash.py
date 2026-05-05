@@ -8,7 +8,7 @@ import pandas as pd
 import json
 import time
 
-DB_FILE = "asset_inventory.db"
+DB_FILE = "/home/ciagentic/Documents/vivek/itotenum/asset_inventory.db"
 
 st.set_page_config(page_title="IT/OT Asset Enumerator",
                    page_icon="🗺️", layout="wide")
