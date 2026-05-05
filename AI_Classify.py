@@ -1,3 +1,8 @@
+import os
+
+# Put this at the top of ALL three files, replacing your current DB_FILE line
+DB_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "asset_inventory.db")
+
 import sqlite3
 import json
 import requests
