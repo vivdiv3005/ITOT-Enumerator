@@ -52,7 +52,13 @@ def load_assets():
     )
     conn.close()
     return df
+df = load_assets()
 
+if df.empty:
+    st.info("⏳ Waiting for assets... Make sure capture_engine.py is running.")
+    time.sleep(5)
+    st.rerun()
+  
 def parse_json_col(val):
     try:
         v = json.loads(val)
