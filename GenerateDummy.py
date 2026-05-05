@@ -277,15 +277,17 @@ def generate_timestamps(days_ago_first):
     return first.isoformat(), last.isoformat()
 
 def populate_db():
+    # Delete old DB and start fresh
     if os.path.exists(DB_FILE):
         os.remove(DB_FILE)
+        print(f"Deleted old DB: {DB_FILE}")
 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+    
     c.execute("""
-        CREATE TABLE IF NOT EXISTS assets (
-            ip TEXT PRIMARY KEY,
-            mac TEXT, vendor TEXT,
+        CREATE TABLE assets (
+            ip TEXT PRIMARY KEY, mac TEXT, vendor TEXT,
             first_seen TEXT, last_seen TEXT,
             open_ports TEXT, ot_protocols TEXT, it_protocols TEXT,
             device_type TEXT, purdue_zone TEXT,
@@ -293,40 +295,41 @@ def populate_db():
             packet_count INTEGER DEFAULT 0
         )
     """)
-
-    for a in ASSETS:
-        first_seen, last_seen = generate_timestamps(a["days_ago_first"])
-        llm = json.dumps({
-            "device_type":          a["device_type"],
-            "purdue_zone":          a["purdue_zone"],
-            "risk_level":           a["risk_level"],
-            "risk_reasons":         a["risk_reasons"],
-            "recommended_actions":  a["recommended_actions"],
-            "confidence":           "HIGH"
-        })
-        c.execute("""
-            INSERT INTO assets VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, (
-            a["ip"], a["mac"], a["vendor"],
-            first_seen, last_seen,
-            json.dumps(a["open_ports"]),
-            json.dumps(a["ot_protocols"]),
-            json.dumps(a["it_protocols"]),
-            a["device_type"], a["purdue_zone"],
-            a["risk_level"], llm,
-            a["packet_count"]
-        ))
-
     conn.commit()
+    print(f"Table created in {DB_FILE}")
+
+    inserted = 0
+    for a in ASSETS:
+        try:
+            first_seen, last_seen = generate_timestamps(a["days_ago_first"])
+            llm = json.dumps({
+                "device_type":         a["device_type"],
+                "purdue_zone":         a["purdue_zone"],
+                "risk_level":          a["risk_level"],
+                "risk_reasons":        a["risk_reasons"],
+                "recommended_actions": a["recommended_actions"],
+                "confidence":          "HIGH"
+            })
+            c.execute("""
+                INSERT INTO assets VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                a["ip"], a["mac"], a["vendor"],
+                first_seen, last_seen,
+                json.dumps(a["open_ports"]),
+                json.dumps(a["ot_protocols"]),
+                json.dumps(a["it_protocols"]),
+                a["device_type"], a["purdue_zone"],
+                a["risk_level"], llm,
+                a["packet_count"]
+            ))
+            conn.commit()  # commit after EVERY row
+            inserted += 1
+            print(f"  Inserted: {a['ip']} — {a['device_type']}")
+        except Exception as e:
+            print(f"  ERROR on {a['ip']}: {e}")
+
     conn.close()
-    print(f"✅ Populated {len(ASSETS)} assets into {DB_FILE}")
-    print("\nBreakdown:")
-    from collections import Counter
-    zones = Counter(a["purdue_zone"] for a in ASSETS)
-    risks = Counter(a["risk_level"] for a in ASSETS)
-    for z,n in sorted(zones.items()): print(f"  {z}: {n} devices")
-    print()
-    for r,n in risks.most_common():   print(f"  {r}: {n} devices")
+    print(f"\nDone. {inserted}/{len(ASSETS)} assets inserted into {DB_FILE}")
 
 if __name__ == "__main__":
     populate_db()
