@@ -25,8 +25,31 @@ ZONE_ORDER = [
 ]
 
 def load_assets():
+    # Create DB and table if they don't exist yet
     conn = sqlite3.connect(DB_FILE)
-    df = pd.read_sql_query("SELECT * FROM assets ORDER BY risk_level DESC", conn)
+    c = conn.cursor()
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS assets (
+            ip TEXT PRIMARY KEY,
+            mac TEXT,
+            vendor TEXT,
+            first_seen TEXT,
+            last_seen TEXT,
+            open_ports TEXT,
+            ot_protocols TEXT,
+            it_protocols TEXT,
+            device_type TEXT,
+            purdue_zone TEXT,
+            risk_level TEXT,
+            llm_classification TEXT,
+            packet_count INTEGER DEFAULT 0
+        )
+    """)
+    conn.commit()
+    
+    df = pd.read_sql_query(
+        "SELECT * FROM assets ORDER BY risk_level DESC", conn
+    )
     conn.close()
     return df
 
